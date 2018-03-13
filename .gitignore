@@ -1,0 +1,21 @@
+#  Ignore all VC files
+
+*.suo
+*.dll
+*.lib
+*.obj
+.vs/
+packages/
+bin/
+obj/
+
+
+
+#  Ignore other things
+Backup
+
+
+# Ignore Emacs
+*~
+.#*
+*#
