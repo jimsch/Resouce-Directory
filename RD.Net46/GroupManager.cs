@@ -36,36 +36,50 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             }
         }
 
+
+        /// <summary>
+        /// Create a group:  Posting here with a list will either replace an existing 
+        /// group or create a new one.
+        /// Template: {+rd-group}{?gp,d,con}
+        /// gp = group name - MANDITORY
+        /// d = domain - OPTIONAL
+        /// con = Multicast Address - OPTIONAL
+        /// </summary>
+        /// <param name="exchange"></param>
         protected override void DoPost(CoapExchange exchange)
         {
-
             GroupLeaf leaf = null;
             GroupLeaf leafOld = null;
             string groupName = null;
 
-            foreach (string opt in exchange.Request.UriQueries) {
-                if (opt.StartsWith("gp=")) {
-                    groupName = opt.Substring(3, opt.Length - 4);
-                    if (groupName[0] == '"') groupName = groupName.Substring(1, groupName.Length - 1);
-                    break;
-                }
-
-            }
-
-            foreach (IResource res in this.Children) {
-                   leaf = res as GroupLeaf;
-                if (leaf != null) {
-                    if (leaf.GroupName == groupName) {
-                        leafOld = leaf;
+            try {
+                foreach (string opt in exchange.Request.UriQueries) {
+                    if (opt.StartsWith("gp=")) {
+                        groupName = opt.Substring(3, opt.Length - 4);
+                        if (groupName[0] == '"') groupName = groupName.Substring(1, groupName.Length - 1);
                         break;
-                    } 
+                    }
                 }
-            }
+
+                foreach (IResource res in this.Children) {
+                    leaf = res as GroupLeaf;
+                    if (leaf != null) {
+                        if (leaf.GroupName == groupName) {
+                            leafOld = leaf;
+                            break;
+                        }
+                    }
+                }
 
                 string childName;
-                do {
-                    childName = NewName();
-                } while (GetChild(childName) != null);
+                if (leafOld != null) {
+                    childName = leafOld.Name;
+                }
+                else {
+                    do {
+                        childName = NewName();
+                    } while (GetChild(childName) != null);
+                }
 
                 try {
                     leaf = new GroupLeaf(childName, exchange.Request);
@@ -74,34 +88,45 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                     exchange.Respond(StatusCode.BadOption);
                     return;
                 }
-            
 
-            if (exchange.Request.HasOption(OptionType.ContentType)) {
-                switch (exchange.Request.ContentType) {
-                    case MediaType.ApplicationLinkFormat:
-                        break;
+                if (exchange.Request.HasOption(OptionType.ContentType)) {
+                    switch (exchange.Request.ContentType) {
+                        case MediaType.ApplicationLinkFormat:
+                            leaf.UpdateContent(exchange.Request.PayloadString);
+                            break;
 
-                    default:
-                        exchange.Respond(StatusCode.BadOption);
+                        default:
+                            exchange.Respond(StatusCode.BadOption);
+                            return;
+                    }
+                }
+                else {
+                    leaf.UpdateContent(exchange.Request.PayloadString);
+                }
+
+                /*
+                 * Does not appear to be my job any more
+                 * 
+                foreach (string ep in leaf.EndPointNames) {
+                    if (!_rd.HasEndpoint(leaf.Domain, ep)) {
+                        exchange.Respond(StatusCode.BadRequest, "EP missing");
                         return;
+                    }
                 }
-            }
-            else {
-                leaf.UpdateContent(exchange.Request.PayloadString);
-            }
+                */
+                
 
-            foreach (string ep in leaf.EndPointNames) {
-                if (!_rd.HasEndpoint(leaf.Domain, ep)) {
-                    exchange.Respond(StatusCode.BadRequest, "EP missing");
-                    return;
-                }
+    // Need to keep observe relations ships from the old to the new
+
+                if (leafOld != null) Remove(leafOld);
+                Add(leaf);
+
+                exchange.LocationPath = leaf.Path;
+                exchange.Respond(StatusCode.Created);
             }
-
-            if (leafOld != null) Remove(leafOld);
-            Add(leaf);
-
-            exchange.LocationPath = leaf.Path;
-            exchange.Respond(StatusCode.Created);
+            catch (Exception e) {
+                exchange.Respond(StatusCode.InternalServerError, e.Message);
+            }
         }
 
         private string NewName()

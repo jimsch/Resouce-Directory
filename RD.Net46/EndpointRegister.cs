@@ -30,7 +30,7 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
         public string DefaultDomain { get; set; }
 
         internal List<EndpointNode> ChildEndpointNodes { get; } = new List<EndpointNode>();
-    
+
 
         /// <summary>
         /// Process POST messages
@@ -46,12 +46,9 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             }
 
             try {
+                //  Parse down the content
 
-#if true
-                RemoteResource links = RemoteResource.NewRoot(req.PayloadString);
-#else
-            RemoteResource links = RemoteResource.NewRoot(req.Payload, req.ContentType);
-#endif
+                RemoteResource links = RemoteResource.NewRoot(req.Payload, req.ContentType);
 
                 string epName = null;
                 string d = null;
@@ -61,16 +58,17 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 }
                 if (d == null && DefaultDomain != null) d = DefaultDomain;
 
-                string childName = null;
+
+                //  Atomic change of the current version, replace with new content
 
                 foreach (EndpointNode node in ChildEndpointNodes) {
                     if (node.Domain == d && node.Name == epName) {
 
-                            node.Reload(links, req.UriQueries);
-                            Response response = new Response(StatusCode.Changed) {
-                                LocationPath = node.Path
-                            };
-                            exchange.Respond(response);
+                        node.Reload(links, req.UriQueries);
+                        Response response = new Response(StatusCode.Changed) {
+                            LocationPath = node.Path
+                        };
+                        exchange.Respond(response);
                         return;
                     }
                 }
@@ -82,10 +80,10 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 //  con - context - optional
                 // 
 
-                    do {
-                        childName = NewName();
-                    } while (GetChild(childName) != null);
-                
+                string childName = null;
+                do {
+                    childName = NewName();
+                } while (GetChild(childName) != null);
 
 
                 EndpointNode newChild = new EndpointNode(childName, links, req.UriQueries);
@@ -94,18 +92,21 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 if (newChild.Context == null) {
                     System.Net.EndPoint ep = req.Source;
                     IPEndPoint ep2 = ep as IPEndPoint;
-                    ;
+                    
                     if (ep2 != null) {
                         newChild.Context = $"coap://{ep2.Address}:{ep2.Port}";
                     }
                 }
 
+                /*
+                 * dup code?
                 foreach (EndpointNode child in ChildEndpointNodes) {
                     if (child.Domain == newChild.Domain && child.EndpointName == newChild.EndpointName) {
                         exchange.Respond(StatusCode.BadOption);
                         return;
                     }
                 }
+                */
 
                 Add(newChild);
                 Response res = Response.CreateResponse(req, StatusCode.Created);
