@@ -71,7 +71,7 @@
       <Project>{9ed6005a-48b9-4229-8d03-c910cee618e6}</Project>
       <Name>cose.dev</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\CoAP-CSharp\CoAP.NET\coap.dev.csproj">
+    <ProjectReference Include="..\..\CoAP-CSharp\CoAP.NET\CoAP.NET45.csproj">
       <Project>{45db1e45-4831-4e4a-bb1e-ae92eea182e3}</Project>
       <Name>coap.dev</Name>
     </ProjectReference>

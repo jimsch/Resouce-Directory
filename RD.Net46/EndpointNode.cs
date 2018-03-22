@@ -30,11 +30,10 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
 
         public void Reload(xx.RemoteResource root, IEnumerable<string> uriQueries)
         {
+            Server.Resources.ResourceAttributes newAttrs = new Server.Resources.ResourceAttributes();
+
             _lifeTime = 86400;
             _endPointType = null;
-            foreach (string x in Attributes.Keys) Attributes.Clear(x);
-
-            _remote = root;
             foreach (string query in uriQueries) {
                 int eq = query.IndexOf('=');
                 string key = eq == -1 ? query : query.Substring(0, eq);
@@ -69,7 +68,23 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 Attributes.Add(key, value);
             }
 
+
+
+            foreach (string x in Attributes.Keys) Attributes.Clear(x);
+            foreach (string x in newAttrs.Keys) {
+                foreach (string y in newAttrs.GetValues(x)) {
+                    Attributes.Add(x, y);
+                }
+            }
+
+            Attributes.AddContentType(MediaType.ApplicationLinkFormat);
+            Attributes.Observable = true;
+
+            _remote = root;
+
             ExpireTime = DateTime.Now + TimeSpan.FromSeconds(_lifeTime);
+
+            Changed();
         }
 
         public String Context { get; set; }
@@ -82,15 +97,18 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             get => _remote.Children;
         }
     
+        /*  no longer required
 
         protected override void DoGet(CoapExchange exchange)
         {
             Response resp = Response.CreateResponse(exchange.Request, StatusCode.Content);
-        //    resp.Payload = LinkFormat.Serialize(_remote, exchange.Request.UriQueries, exchange.Request.ContentType);
+            resp.Payload = LinkFormat.Serialize(_remote, exchange.Request.UriQueries, exchange.Request.ContentType);
             
             exchange.Respond(resp);
         }
-
+        */
+#if false
+        // No longer supported
         protected override void DoPost(CoapExchange exchange)
         {
             Request req = exchange.Request;
@@ -129,7 +147,10 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             ExpireTime = DateTime.Now + TimeSpan.FromSeconds(_lifeTime);
             exchange.Respond(StatusCode.Changed);
         }
+#endif
 
+#if false
+        // No longer supported
         protected override void DoPatch(CoapExchange exchange)
         {
             Request req = exchange.Request;
@@ -165,6 +186,7 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 exchange.Respond(StatusCode.BadRequest);
             }
         }
+#endif
 
         protected override void DoDelete(CoapExchange exchange)
         {
@@ -195,6 +217,9 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
         {
             LinkFormat.SerializeResource(this, array, cborDictionary);
         }
+
+#if false
+        // Patch goes away
 
         private void DoPatchAdd(CBORObject patch, CoapExchange exchange)
         {
@@ -281,5 +306,6 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
 
             return true;
         }
+#endif
     }
 }

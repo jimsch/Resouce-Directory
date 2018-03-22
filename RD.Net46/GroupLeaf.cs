@@ -18,6 +18,9 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 string[] items = query.Split('=');
                 string key = items[0];
                 string value = (items.Length == 1) ? items[1] : null;
+                if (value != null && value[0] == '"') {
+                    //  M00BUG check to makes sure we don't need to strip this.
+                }
 
                 switch (items[0]) {
                     case "gp":
@@ -33,8 +36,7 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                         break;
 
                     default:
-                        // TODO Make this an error
-                        break;
+                        throw new Exception("Will do a BadOption exception");
                 }
 
                 Attributes.Add(key, value);
@@ -57,14 +59,8 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             string[] lines = body.Split(',');
             foreach (string line in lines) {
                 string[] attributes = line.Split(';');
-                if (attributes.Length != 2) return StatusCode.BadRequest;
-                if (attributes[0] != "<>") return StatusCode.BadRequest;
-                attributes = attributes[1].Split('=');
-                if (attributes.Length != 2 || attributes[0] != "ep") return StatusCode.BadRequest;
-                if (attributes[1][0] == '=') {
-                    attributes[1] = attributes[1].Substring(1, attributes[1].Length - 2);
-                }
-                EndPointNames.Add(attributes[1]);
+                if (attributes.Length != 1) return StatusCode.BadRequest;
+                EndPointNames.Add(attributes[0]);
             }
 
             return StatusCode.Created;
