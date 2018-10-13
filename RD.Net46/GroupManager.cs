@@ -15,19 +15,18 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
 
         private static string _CharSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         static Random _Random = new Random();
-        private EndpointRegister _rd;
+        public EndpointRegister EndpointMgr { get; internal set; }
 
 
         public GroupManager(string resourceName, EndpointRegister rd) : base(resourceName)
         {
             this.Attributes.AddResourceType("core.rd-group");
-            _rd = rd;
+            EndpointMgr = rd;
         }
 
         public IEnumerable<GroupLeaf> AllGroups
         {
-            get
-            {
+            get {
                 foreach (IResource child in Children) {
                     if (child is GroupLeaf leaf) {
                         yield return leaf;
@@ -51,20 +50,27 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             GroupLeaf leaf = null;
             GroupLeaf leafOld = null;
             string groupName = null;
+            string domain = null;
 
             try {
                 foreach (string opt in exchange.Request.UriQueries) {
                     if (opt.StartsWith("gp=")) {
-                        groupName = opt.Substring(3, opt.Length - 4);
+                        groupName = opt.Substring(3, opt.Length - 3);
                         if (groupName[0] == '"') groupName = groupName.Substring(1, groupName.Length - 1);
-                        break;
                     }
+                    else if (opt.StartsWith("d=")) {
+                        domain = opt.Substring(2);
+                    }
+                }
+
+                if (domain == null) {
+                    domain = EndpointMgr.DefaultDomain;
                 }
 
                 foreach (IResource res in this.Children) {
                     leaf = res as GroupLeaf;
                     if (leaf != null) {
-                        if (leaf.GroupName == groupName) {
+                        if (leaf.GroupName == groupName && leaf.Domain == domain) {
                             leafOld = leaf;
                             break;
                         }
@@ -82,7 +88,7 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 }
 
                 try {
-                    leaf = new GroupLeaf(childName, exchange.Request);
+                    leaf = new GroupLeaf(childName, exchange.Request, this);
                 }
                 catch {
                     exchange.Respond(StatusCode.BadOption);
@@ -91,17 +97,19 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
 
                 if (exchange.Request.HasOption(OptionType.ContentType)) {
                     switch (exchange.Request.ContentType) {
-                        case MediaType.ApplicationLinkFormat:
-                            leaf.UpdateContent(exchange.Request.PayloadString);
-                            break;
+                    case MediaType.ApplicationLinkFormat:
+                    case MediaType.ApplicationLinkFormatCbor:
+                    case MediaType.ApplicationLinkFormatJson:
+                        leaf.UpdateContent(exchange.Request.Payload, exchange.Request.ContentFormat);
+                        break;
 
-                        default:
-                            exchange.Respond(StatusCode.BadOption);
-                            return;
+                    default:
+                        exchange.Respond(StatusCode.BadOption);
+                        return;
                     }
                 }
                 else {
-                    leaf.UpdateContent(exchange.Request.PayloadString);
+                    leaf.UpdateContent(exchange.Request.Payload, MediaType.ApplicationLinkFormat);
                 }
 
                 /*
@@ -115,13 +123,10 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 }
                 */
                 
-
-    // Need to keep observe relations ships from the old to the new
-
                 if (leafOld != null) Remove(leafOld);
                 Add(leaf);
 
-                exchange.LocationPath = leaf.Path;
+                exchange.LocationPath = leaf.Uri;
                 exchange.Respond(StatusCode.Created);
             }
             catch (Exception e) {
@@ -131,7 +136,15 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
 
         private string NewName()
         {
+            /*
             return _CharSet.Select(c => _CharSet[_Random.Next(_CharSet.Length)]).Take(4).ToString();
+            */
+            string str = "";
+            for (int i = 0; i < 4; i++) {
+                str += _CharSet[_Random.Next(_CharSet.Length)];
+            }
+
+            return str;
         }
 
     }

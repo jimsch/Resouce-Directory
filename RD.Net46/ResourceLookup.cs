@@ -21,6 +21,7 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             Attributes.AddContentType(MediaType.ApplicationLinkFormat);
             Attributes.AddContentType(MediaType.ApplicationCbor);
             Attributes.AddContentType(MediaType.ApplicationJson);
+            root.ResourceLookupResource = this;
         }
 
 
@@ -30,39 +31,56 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
             CBORObject items = null;
             StringBuilder sb = null;
             Dictionary<string, CBORObject> dict = null;
+            int respContentType = MediaType.ApplicationLinkFormat;
 
             try {
                 Filter filter = new Filter(req.UriQueries);
                 int firstItem = 0;
-                int lastItem = Int32.MaxValue;
+                int lastItem = int.MaxValue;
 
-                if (filter.Count != Int32.MaxValue) {
+                if (filter.Count != int.MaxValue) {
                     firstItem = filter.Count * filter.Page;
                     lastItem = firstItem + filter.Page - 1;
+                }
+                else if (filter.Page != 0) {
+                    throw new Exception();
                 }
 
                 Response resp = Response.CreateResponse(req, StatusCode.Content);
 
                 if (req.HasOption(OptionType.Accept)) {
-                    switch (req.GetFirstOption(OptionType.Accept).IntValue) {
+                    foreach (Option acceptOption in req.GetOptions(OptionType.Accept)) {
+                        switch (acceptOption.IntValue) {
                         case MediaType.ApplicationLinkFormat:
                             sb = new StringBuilder();
                             break;
 
-                        case MediaType.ApplicationCbor:
+                        case MediaType.ApplicationLinkFormatCbor:
                             items = CBORObject.NewArray();
-                            dict = LinkFormat._CborAttributeKeys;
+                            dict = LinkFormat.CborAttributeKeys;
                             break;
 
-                        case MediaType.ApplicationJson:
+                        case MediaType.ApplicationLinkFormatJson:
                             items = CBORObject.NewArray();
                             break;
 
                         default:
-                            exchange.Respond(StatusCode.BadOption);
-                            return;
+                            // Ignore value
+                            break;
+
+                        }
+
+                        //  We found a value
+                        if (sb != null || items != null) {
+                            respContentType = acceptOption.IntValue;
+                            break;
+                        }
                     }
-                    resp.ContentType = req.GetFirstOption(OptionType.Accept).IntValue;
+
+                    if (sb == null && items == null) {
+                        exchange.Respond(StatusCode.NotAcceptable);
+                        return;
+                    }
                 }
                 else {
                     sb = new StringBuilder();
@@ -71,25 +89,33 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 int itemCount = -1;
 
                 foreach (EndpointNode ep in _root.ChildEndpointNodes) {
+                    if (ep.IsDeleted) continue;
+
+                    Uri baseUri = ep.BaseUrl;
+
                     foreach (IResource link in ep.Links) {
                         filter.ClearState();
                         if (!filter.Apply(link.Attributes)) {
-                            ep.ApplyFilter(filter, true, false);
+                            if (!ep.ApplyFilter(filter, true, false)) {
+                                filter.Href(link.Uri);
+                            }
                         }
                         if (filter.Passes) {
                             itemCount += 1;
                             if (itemCount < firstItem || itemCount > lastItem) continue;
                             if (sb != null) {
-                                LinkFormat.SerializeResource(link, sb);
+                                LinkFormat.SerializeResource(link, sb, null, baseUri);
+                                sb.Append(',');
                             }
                             else {
-                                LinkFormat.SerializeResource(link, items, dict);
+                                LinkFormat.SerializeResource(link, items, dict, null, baseUri);
                             }
                         }
                     }
                 }
 
                 if (sb != null) {
+                    if (sb.Length > 0) sb.Remove(sb.Length - 1, 1);
                     resp.PayloadString = sb.ToString();
                 }
                 else if (dict == null) {
@@ -98,6 +124,8 @@ namespace Com.AugustCellars.CoAP.ResourceDirectory
                 else {
                     resp.Payload = items.EncodeToBytes();
                 }
+
+                resp.ContentFormat = respContentType;
 
                 exchange.Respond(resp);
             }
