@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <PackageId>Com.AugustCellars.CoAP.ResourceDirectory</PackageId>
+    <Id>Com.AugustCellars.CoAP.ResourceDirectory</Id>
+    <PackageVersion>0.1.0</PackageVersion>
+    <Version>0.1.0</Version>
+    <Authors>Jim Schaad</Authors>
+    <Description>An implementation of the WebToken</Description>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Copyright>Copyright @2016-9 Jim Schaad</Copyright>
+    <PackageTags>ResourceDirectory CoAP</PackageTags>
+    
+    <PackageReleaseNotes>
+    Don't release me
+    </PackageReleaseNotes>
+    
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <AssemblyName>ResourceDirectory</AssemblyName>
+    <RootNamespace>Com.AugustCellars.CoAP.ResourceDirectory</RootNamespace>
+    <AutoGenerateBindingRedirects>True</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <IntermediateOutputPath>obj\dev\Debug</IntermediateOutputPath>
+    <OutputPath>bin\dev\Debug\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="EndpointLookup.cs" />
+    <Compile Include="Filter.cs" />
+    <Compile Include="GroupLeaf.cs" />
+    <Compile Include="GroupLookup.cs" />
+    <Compile Include="GroupManager.cs" />
+    <Compile Include="EndpointNode.cs" />
+    <Compile Include="EndpointRegister.cs" />
+    <Compile Include="ResourceDirectory.cs" />
+    <Compile Include="ResourceLookup.cs" />
+    <Compile Include="SimpleRegistration.cs" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="PeterO.Cbor" Version="4.0.1" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\CoAP-CSharp\CoAP.NET\coap.dev.csproj" />
+  </ItemGroup>
+  
+</Project>
